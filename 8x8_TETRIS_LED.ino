@@ -1,4 +1,4 @@
- #define XOR(A, B) !A != !B // XOR(1, 1) !1 != !1
+#define XOR(A, B) !A != !B // XOR(1, 1) !1 != !1
 #include "LedControl.h"
 
 
@@ -77,14 +77,17 @@ int prevx = x, prevy = y;
 bool rowcol[MAXROW][MAXCOL - 8];
 
 bool blockGenerated = false;
-bool block[3][2] = {0};
+bool block[3][3] = {0};
+int rotation = 0;
 
 //
 unsigned long currentMillis = 0;
 unsigned long interval = 100;
 unsigned long previousMillis = 0;
 
-void setup() 
+
+
+void setup()
 {
     //debug
     Serial.begin(9600);
@@ -119,10 +122,7 @@ void loop()
         // update the game if 100 millisecond has passed
         if(currentMillis - previousMillis >= interval)
         {
-            if(blockGenerated == false)
-                generateBlock();
             updatePlayer();
-            checkBlocks();
             previousMillis = currentMillis;
         }
         playMusic();
@@ -137,132 +137,93 @@ void loop()
     }
 }
 
-void checkBlocks()
+void updateBlocks()
 {
-    //debug
-    //for(int i = 0; i < MAXCOL - (5 + 8); i++)
-        //rowcol[x][i] = true;
-    
-    /*bool rowFull = false;
-    for(int i = 0; i < MAXCOL - 8; i++)
-    {
-        if(checkRow(i) == true)
-            rowFull = true;
-        
-        if(rowFull)
-        {
-            if(i < 8)
-                lc.setColumn(3, i, B00000000);               
-            if(i > 7 && i < 16)
-                lc.setColumn(2, i, B00000000);
-            if(i > 15 && i < 23)
-                lc.setColumn(1, i, B00000000);
 
-            for(int j = 0; j < MAXCOL-8; j++)
-                for(int k = 0; k < MAXROW; k++)
-                    rowcol[k][j] = rowcol[k][j+1];
-            rowFull = false;
-        }
-    }
-    */
+     if(digitalRead(JB) == false)
+     {
+          rotation++;
+          if(rotation > 3)
+               rotation = 0;
+     }
+     
+     if(y == 0 && (rowcol[x][0] == false || rowcol[x+1][0] == false))
+     {
+          for(int i = 0; i < 3; i++)
+               for(int j = 0; j < 3; j++)
+                    if(block[j][i] == true)
+                         rowcol[x+j][y+i] = true;
+          blockGenerated = false;
+     }
+     else if (rowcol[x+1][y-1] == true){
+          for(int i = 0; i < 3; i++)
+               for(int j = 0; j < 3; j++)
+                    if(block[j][i] == true)
+                         rowcol[x+j][y+i] = true;
+     }
+     
 
-    if(y == 0 && rowcol[x][0] == false && (rowcol[x-1][0] == false||rowcol[x+1][0] == false))
-    {
-        for(int i = 0; i < 2; i++)
-        {
-            for(int j = 0; j < 3; j++)
-            {
-                rowcol[x+i][y+j] = block[i][j];
-            }
-        }
-        blockGenerated = false; // if the block is placed generate a new one
-    }
-    if(y > 0) //if blocks are above 0
-    {
-      //rowcol[x][y-1] == true || rowcol[x+1][y-1] == true
-        if(rowcol[x][y-1] == true) // if the pieces underneath are there
-        {
-               if (rowcol[x+1][y-1] == true)
-               {    
-                    for(int i = 0; i < 2; i++)
-                    {   
-                         for(int j = 0; j < 3; j++)
-                         {
-                              if(block[i][j] == true)
-                                   rowcol[x+i][y+j] = true;// then place the block
-                         }
-                    }
-               }
-               else if ( rowcol[x-1][y-1] == true )              
-               {    
-                    for(int i = 0; i < 2; i++)
-                    {
-                         for(int j = 0; j < 3; j++)
-                         {
-                              if(x == 0)
-                                   if(block[i][j] == true)
-                                        rowcol[x+i][y+j] = true;// then place the block
-                              else
-                                   if(block[i][j] == true)
-                                        rowcol[x-1+i][y+j] = true;// then place the block
-                         }
-                    }
-               }
-        }
-    }
+     
+     //check if the block is placed to generate a new one
+     generateBlock();
+
+    //if the blocks reached the top
     if(rowcol[x][23] == true)
         gameOver = true;
 }
 
 void checkInput(){
-    //take the previous cordi
-    prevy = y;
-    prevx = x;
+     //take the previous coordinates
+     prevy = y;
+     prevx = x;
 
-    y--;
-    if (map(analogRead(JX), 0, 1023, -20, 100) > 50){
-        x++;
-    }
-    if (map(analogRead(JX), 0, 1023, -100, 20) < -50){
-        x--;
-    }
-    if(x < 0){
-        x = 0;
-    }
-    if(x > 6){
-        x = 6;
-    }
-    if(rowcol[x][y+1] == true || y < 0)
-    {
-        y = 23;
-        blockGenerated = false;
-    }
+     //update the block coordinates
+     y--;
+     //get input
+     if (map(analogRead(JX), 0, 1023, -20, 100) > 50){
+          x++;
+     }
+     if (map(analogRead(JX), 0, 1023, -100, 20) < -50){
+          x--;
+     }
+
+
+               
+     if(x < 0){
+          x = 0;
+     }
+     
+     if(x > 6){
+          x = 6;
+     }
+     
+     for(int i = 0; i <3; i++)
+          if(block[i][0] == false && x < 0)
+               x = 0;
+     
+     for(int i = 0; i <3; i++)
+          if(block[i][2] == false && x > 6)
+               x = 6;
+     //if block is placed
+     if(rowcol[x][y+1] == true || y < 0)
+     {
+          y = 23;
+          blockGenerated = false;
+     }
 }
 
 //update and draw the block(player)
 void updatePlayer()
 {
-    checkInput(); //check the joysticks input and updates coordinates
-    renderBlock();
+     updateBlocks(); //updates the blocks (collision)
+     
+     checkInput(); //check the joysticks input and updates coordinates
+     renderBlock(); //renders the blocks
+     
 }
-    /*if(prevy > 15 && y < 24) //24 is max
-    {
-        lc.setLed(1, prevx, prevy-15, false);
-        lc.setLed(1, x, y-16, true);
-        
-    } 
-    if(prevy > 7 && y < 16) //15 is max
-    {
-        lc.setLed(2, x, y-8, true);
-        lc.setLed(2, prevx, prevy-8, false);
-    }   
-    if(prevy > -1 && y < 8) //7 is max
-    {
-        lc.setLed(3, x, y, true);
-        lc.setLed(3, prevx, prevy, false);
-    }*/
-//Still in construction
 
+
+//Still in construction
 //notes: use delay without sleeping the arduino
 void playMusic()
 {
@@ -281,118 +242,194 @@ bool checkRow(int j)
 //draw the blocks
 void renderBlock()
 {
-    for(int i = 0; i < 2; i++){
-        
-        for(int j = 0; j < 3; j++){
-          
-            if(y > 11 && block[j][i] != false)
-                lc.setLed(1, i+prevx, j+prevy-16, false);
+     for(int i = 0; i < 3; i++){
+
+          for(int j = 0; j < 3; j++){
+
+               if(y > 11 ) //if y > 11 then draw the block
+                    lc.setLed(1, i+prevx, j+prevy-16, false);
             
-            if((y < 20 && y > 3) && block[j][i] != false)
-                lc.setLed(2, i+prevx, j+prevy-8, false);
+               if(y < 20 && y > 3)
+                    lc.setLed(2, i+prevx, j+prevy-8, false);
             
-            if(y < 12 && block[j][i] != false)
-                lc.setLed(3, i+prevx, j+prevy, false);
-        }
-    }
-    for(int i = 0; i < 2; i++){
-        
-        for(int j = 0; j < 3; j++){
+               if(y < 12)
+                    lc.setLed(3, i+prevx, j+prevy, false);
+          }
+     }
+     for(int i = 0; i < 3; i++){
+
+          for(int j = 0; j < 3; j++){
             
-            if(y > 11 && block[j][i] != false)
-                lc.setLed(1, i+x, j+y-16, true);
+               if(y > 11 && block[j][i] != false)
+                    lc.setLed(1, i+x, j+y-16, true);
             
-            if((y < 20 && y > 3) && block[j][i] != false)
-                lc.setLed(2, i+x, j+y-8, true);
+               if((y < 20 && y > 3) && block[j][i] != false)
+                    lc.setLed(2, i+x, j+y-8, true);
             
-            if(y < 12 && block[j][i] != false)
-                lc.setLed(3, i+x, j+y, true);
-        }
-    }
+               if(y < 12 && block[j][i] != false)
+                    lc.setLed(3, i+x, j+y, true);
+          }
+     }
 }
 
 void generateBlock()
 {
-    types = random(0, 6);
+     if(blockGenerated == false)
+     {
+          types = random(0, 5);
+          blockGenerated = true;
+     }
+     //L, Z, T, O, I, J
+     //0, 1, 2, 3, 4, 5
+     switch(types)
+     {
+          case 0:
+               switch(rotation)
+               {
+                    case 0:
+                         block[0][0] = 1; block[0][1] = 0; block[0][2] = 0; // 1 0 0
+                         block[1][0] = 1; block[1][1] = 0; block[1][2] = 0; // 1 0 0
+                         block[2][0] = 1; block[2][1] = 1; block[2][2] = 0; // 1 1 0
+                         break;
+                    case 1:
+                         block[0][0] = 0; block[0][1] = 0; block[0][2] = 0; // 0 0 0
+                         block[1][0] = 0; block[1][1] = 0; block[1][2] = 1; // 0 0 1
+                         block[2][0] = 1; block[2][1] = 1; block[2][2] = 1; // 1 1 1
+                         break;
+                    case 2:
+                         block[0][0] = 0; block[0][1] = 1; block[0][2] = 1; // 0 1 1
+                         block[1][0] = 0; block[1][1] = 0; block[1][2] = 1; // 0 0 1
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 1; // 0 0 1
+                         break;
+                    case 3:
+                         block[0][0] = 1; block[0][1] = 1; block[0][2] = 1; // 1 1 1
+                         block[1][0] = 1; block[1][1] = 0; block[1][2] = 0; // 1 0 0
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 0; // 0 0 0
+                         break;      
+               }
+            break;
+            
+          case 1:
+               switch(rotation)
+               {
+                    case 0:
+                         block[0][0] = 1; block[0][1] = 0; block[0][2] = 0; // 1 0 0
+                         block[1][0] = 1; block[1][1] = 1; block[1][2] = 0; // 1 1 0
+                         block[2][0] = 0; block[2][1] = 1; block[2][2] = 0; // 0 1 0
+                         break;
+                    case 1:
+                         block[0][0] = 0; block[0][1] = 1; block[0][2] = 1; // 0 1 1
+                         block[1][0] = 1; block[1][1] = 1; block[1][2] = 0; // 1 1 0
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 0; // 0 0 0
+                         break;
+                    case 2:
+                         block[0][0] = 0; block[0][1] = 1; block[0][2] = 0; // 0 1 0
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 1; // 0 1 1
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 1; // 0 0 1
+                         break;
+                    case 3:
+                         block[0][0] = 0; block[0][1] = 0; block[0][2] = 0; // 0 0 0
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 1; // 0 1 1
+                         block[2][0] = 1; block[2][1] = 1; block[2][2] = 0; // 1 1 0
+                         break;      
+               }
+            break;
 
-    //L, Z, T, O, I, J
-    switch(types)
-    {
-        case 0:
-            block[0][0] = 1; block[0][1] = 0; // 1 0
-            block[1][0] = 1; block[1][1] = 0; // 1 0
-            block[2][0] = 1; block[2][1] = 1; // 1 1
+          case 2:
+               switch(rotation)
+               {
+                    case 0:
+                         block[0][0] = 1; block[0][1] = 0; block[0][2] = 0; // 1 0 0
+                         block[1][0] = 1; block[1][1] = 1; block[1][2] = 0; // 1 1 0
+                         block[2][0] = 1; block[2][1] = 0; block[2][2] = 0; // 1 0 0
+                         break;
+                    case 1:
+                         block[0][0] = 0; block[0][1] = 0; block[0][2] = 0; // 0 0 0
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 0; // 0 1 0
+                         block[2][0] = 1; block[2][1] = 1; block[2][2] = 1; // 1 1 1
+                         break;
+                    case 2:
+                         block[0][0] = 0; block[0][1] = 0; block[0][2] = 1; // 0 0 1
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 1; // 0 1 1
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 1; // 0 0 1
+                         break;
+                    case 3:
+                         block[0][0] = 1; block[0][1] = 1; block[0][2] = 1; // 1 1 1
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 0; // 0 1 0
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 0; // 0 0 0
+                         break;      
+               }
             break;
-            
-        case 1:
-            block[0][0] = 1; block[0][1] = 0; // 1 0
-            block[1][0] = 1; block[1][1] = 1; // 1 1
-            block[2][0] = 0; block[2][1] = 1; // 0 1
+
+          case 3:
+               //there is no difference in rotating a square 90 deg
+               block[0][0] = 1; block[0][1] = 1; block[0][2] = 0; // 1 1 0
+               block[1][0] = 1; block[1][1] = 1; block[0][2] = 0; // 1 1 0
+               block[2][0] = 0; block[2][1] = 0; block[0][2] = 0; // 0 0 0
             break;
-            
-        case 2:
-            block[0][0] = 1; block[0][1] = 0; // 1 0 
-            block[1][0] = 1; block[1][1] = 1; // 1 1 
-            block[2][0] = 1; block[2][1] = 0; // 1 0 
+
+          case 4:
+               switch(rotation)
+               {
+                    case 0:
+                         block[0][0] = 0; block[0][1] = 1; block[0][2] = 0; // 0 1 0
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 0; // 0 1 0
+                         block[2][0] = 0; block[2][1] = 1; block[2][2] = 0; // 0 1 0
+                         break;
+                    case 1:
+                         block[0][0] = 0; block[0][1] = 0; block[0][2] = 0; // 0 0 0
+                         block[1][0] = 1; block[1][1] = 1; block[1][2] = 1; // 1 1 1
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 0; // 0 0 0
+                         break;
+                    case 2:
+                         block[0][0] = 0; block[0][1] = 1; block[0][2] = 0; // 0 1 0
+                         block[1][0] = 0; block[1][1] = 1; block[1][2] = 0; // 0 1 0
+                         block[2][0] = 0; block[2][1] = 1; block[2][2] = 0; // 0 1 0
+                         break;
+                    case 3:
+                         block[0][0] = 0; block[0][1] = 0; block[0][2] = 0; // 0 0 0
+                         block[1][0] = 1; block[1][1] = 1; block[1][2] = 1; // 1 1 1
+                         block[2][0] = 0; block[2][1] = 0; block[2][2] = 0; // 0 0 0
+                         break;      
+               }
             break;
-            
-        case 3:
-            block[0][0] = 0; block[0][1] = 0; // 1 1
-            block[1][0] = 1; block[1][1] = 1; // 1 1
-            block[2][0] = 1; block[2][1] = 1; // 0 0
-            break;
-            
-        case 4:
-            block[0][0] = 0; block[0][1] = 1; // 0 1
-            block[1][0] = 0; block[1][1] = 1; // 0 1
-            block[2][0] = 0; block[2][1] = 1; // 0 1
-            break;
-            
-        case 5:
-            block[0][0] = 1; block[0][1] = 0; // 0 1
-            block[1][0] = 1; block[1][1] = 1; // 0 1
-            block[2][0] = 0; block[2][1] = 1; // 1 1
-            break;
-            
-        default:
-            break;
-    }
-    blockGenerated = true;
+     }
 }
 
 //resets the game if wanted to play again
 void resetGame()
 {
-    //reset player
-    x = 4, y = 24;
-    prevx = 0, prevy = y;
+     //reset player
+     x = 4, y = 24;
+     prevx = 0, prevy = y;
     
-    //Clear displays
-    for(int i = 0; i < lc.getDeviceCount(); i++)
-        lc.clearDisplay(i);
+     //Clear displays
+     for(int i = 0; i < lc.getDeviceCount(); i++)
+          lc.clearDisplay(i);
 
-    //clear the blocks
-    for(int i = 0; i < MAXROW; i++)
-        for(int j = 0; j < MAXCOL-8; j++)
-            rowcol[i][j] = false;
+     //clear the blocks
+     for(int i = 0; i < MAXROW; i++)
+          for(int j = 0; j < MAXCOL-8; j++)
+               rowcol[i][j] = false;
 }
 
 //draws text "GAME" and "OVER"
 void drawGameOver()
 {
-    for(int i = 0; i < lc.getDeviceCount(); i++)
-        lc.clearDisplay(i);
-    delay(500);
-    for(int i = 0; i < 4; i++)
-        for(int j = 0; j < 8; j++)
-            lc.setRow(i, j, GAME[i][j]);
-    delay(500);
+     for(int i = 0; i < 4; i++)
+          lc.clearDisplay(i);
+     delay(500);
+     for(int i = 0; i < 4; i++)
+          for(int j = 0; j < 8; j++)
+               lc.setRow(i, j, GAME[i][j]);
+     delay(500);
 
-    for(int i = 0; i < lc.getDeviceCount(); i++)
-        lc.clearDisplay(i);
-    delay(500);
-    for(int i = 0; i < 4; i++)
-        for(int j = 0; j < 8; j++)
-            lc.setRow(i, j, OVER[i][j]);
-    delay(500);
+     for(int i = 0; i < 4; i++)
+          lc.clearDisplay(i);
+     delay(500);
+     
+     for(int i = 0; i < 4; i++)
+          for(int j = 0; j < 8; j++)
+               lc.setRow(i, j, OVER[i][j]);
+     delay(500);
 }
